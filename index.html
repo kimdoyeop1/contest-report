@@ -258,6 +258,7 @@ async function openEntry(id){
   $("dB").innerHTML=
     `<div class="box"><h3>우리가 낸 내용${pages.length?` · 제출물 ${pages.length}쪽 (눌러서 크게)`:""}</h3>${pages.length?`<div class="strip">${pages.map((p,k)=>`<button data-pg="${k}" aria-label="${k+1}쪽 크게 보기"><img src="${esc(thumb(p))}" alt="" decoding="async" fetchpriority="${k<3?"high":"auto"}"><em>${k+1}</em></button>`).join("")}</div>`:""}<div class="body">${esc(e.body||e.content||"-")}</div></div>`+
     `<div class="box"><h3>공모 정보</h3><dl>${[["내용",e.desc],["시상",e.prize],["주최",e.host],["제출",e.method]].filter(x=>x[1]).map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>${u?`<div class="act"><a class="btn" href="${esc(u)}" target="_blank" rel="noopener">공고 열기</a></div>`:""}</div>`;
+  if(!isOn("sheet"))pushOverlay("sheet");
   $("sheet").classList.add("on");$("sheet").scrollTop=0;
 }
 function show(v){if(!TT[v])v="todo";view=v;
@@ -265,24 +266,32 @@ function show(v){if(!TT[v])v="todo";view=v;
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.v===v)));
   $("ttl").textContent=TT[v];$("hpill").style.visibility=v==="log"?"visible":"hidden";
   if(v!=="log")$("qbox").classList.remove("on");window.scrollTo(0,0)}
-function openSearch(){location.hash="log";$("qbox").classList.add("on");setTimeout(()=>$("q").focus(),50)}
+// 휴대폰 뒤로 가기: 원본 보기 → 상세 → 할 일 탭 → 앱 종료 순서
+const isOn=id=>$(id).classList.contains("on");
+function pushOverlay(name){history.pushState({ov:name},"",location.href)}
+function closeOverlay(name,id){if(history.state&&history.state.ov===name)history.back();else $(id).classList.remove("on")}
+function closeTop(){for(const id of ["viewer","sheet","qbox"])if(isOn(id)){$(id).classList.remove("on");return true}return false}
+function nav(v){if(!TT[v])v="todo";if(v===view)return;
+  if(view==="todo")history.pushState(null,"","#"+v);else history.replaceState(null,"","#"+v);show(v)}
+window.addEventListener("popstate",()=>{if(!closeTop())show(location.hash.slice(1))});
+function openSearch(){nav("log");$("qbox").classList.add("on");setTimeout(()=>$("q").focus(),50)}
 
 async function openViewer(k){
   await sign(curPages);
   $("vImgs").innerHTML=curPages.map((p,i)=>`<img src="${esc(full(p))}" alt="${i+1}쪽" decoding="async" loading="${Math.abs(i-k)<2?"eager":"lazy"}" id="vp${i}">`).join("");
-  $("vN").textContent=`${curPages.length}쪽`;$("viewer").classList.add("on");
+  $("vN").textContent=`${curPages.length}쪽`;if(!isOn("viewer"))pushOverlay("viewer");$("viewer").classList.add("on");
   requestAnimationFrame(()=>{const t=$("vp"+k);if(t)$("viewer").scrollTop=t.offsetTop-56})}
-$("vClose").onclick=()=>$("viewer").classList.remove("on");
+$("vClose").onclick=()=>closeOverlay("viewer","viewer");
 document.addEventListener("load",ev=>{const t=ev.target;if(t.tagName==="IMG"&&t.closest(".strip")){t.classList.add("ok");t.parentNode.style.animation="none"}},true);
 document.addEventListener("pointerdown",ev=>{const r=ev.target.closest("[data-e]");if(r){const e=entries.find(x=>x.id===r.dataset.e);if(e)warm(e,true)}},{passive:true});
-document.querySelector(".tabs").addEventListener("click",ev=>{const t=ev.target.closest(".tab");if(t)location.hash=t.dataset.v});
+document.querySelector(".tabs").addEventListener("click",ev=>{const t=ev.target.closest(".tab");if(t)nav(t.dataset.v)});
 window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
 show(location.hash.slice(1));
 $("dSearch").onclick=openSearch;$("bSearch").onclick=openSearch;
 $("bTop").onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
 $("q").addEventListener("input",renderLog);
-$("back").onclick=()=>$("sheet").classList.remove("on");
-document.addEventListener("keydown",ev=>{if(ev.key==="Escape"){if($("viewer").classList.contains("on"))$("viewer").classList.remove("on");else $("sheet").classList.remove("on")}});
+$("back").onclick=()=>closeOverlay("sheet","sheet");
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape"){if(isOn("viewer"))closeOverlay("viewer","viewer");else if(isOn("sheet"))closeOverlay("sheet","sheet")}});
 document.body.addEventListener("click",async ev=>{
   const sg=ev.target.closest("[data-seg]");if(sg){seg=sg.dataset.seg;renderLog();return}
   const pg=ev.target.closest("[data-pg]");if(pg){openViewer(+pg.dataset.pg);return}
