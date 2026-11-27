@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>공모전 보고</title>
+<meta name="theme-color" content="#0a0a0b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 업무 받은편지함 — 조용하고 빠르게, 한 줄에 한 건
+   IDEA: 메일 앱 인박스. 새 소식은 파란 점, 상태는 아바타 배지
+   PICTURE: 어두운 목록 + 떠 있는 알약형 하단 탭과 원형 검색 버튼
+   COLOUR and TYPE: 검정 #0a0a0b, 회색 텍스트, 파랑 #4ea1ff 점, 보라 #6b6bd6 강조 / Inter + Noto Sans KR
+   LAYOUT: 큰 제목 헤더, 목록, 상세는 전체 화면 시트로 덮음 */
+:root{color-scheme:dark;--bg:#0a0a0b;--bg2:#141416;--bg3:#1c1c1f;--ink:#f4f4f5;--sub:#9a9aa1;--dim:#5f5f66;--line:#232326;--blue:#4ea1ff;--vio:#6b6bd6;--ok:#4fc883;--warn:#ff9b4a;--gold:#e8c34a}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Inter,"Noto Sans KR",system-ui,sans-serif;overflow-x:clip}
+.app{max-width:560px;margin:0 auto;min-height:100vh;padding:calc(18px + env(safe-area-inset-top)) 0 calc(110px + env(safe-area-inset-bottom))}
+header{display:flex;justify-content:space-between;align-items:center;padding:6px 20px 14px}
+header h1{margin:0;font-size:28px;font-weight:700;letter-spacing:-.4px}
+.pill{display:flex;gap:2px;background:var(--bg3);border-radius:22px;padding:4px}
+.ib{width:38px;height:36px;border:0;border-radius:18px;background:none;color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.ib:active{background:#2a2a2e}
+svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.sync{font-size:12px;color:var(--dim);padding:0 20px 8px}
+.view{display:none}.view.on{display:block}
+.sec{font-size:13px;color:var(--sub);padding:18px 20px 6px;font-weight:500}
+.row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:start;padding:11px 20px;cursor:pointer;border:0;background:none;color:inherit;width:100%;text-align:left;font:inherit}
+.row:active{background:var(--bg2)}
+.av{position:relative;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:600 16px Inter,"Noto Sans KR",sans-serif;color:#fff}
+.av i{position:absolute;right:-2px;bottom:-2px;width:18px;height:18px;border-radius:50%;border:2px solid var(--bg);display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:700;color:#0a0a0b}
+.t{display:flex;align-items:center;gap:7px;font-weight:600;font-size:16px;line-height:1.3}
+.t span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--blue)}
+.s{color:var(--sub);font-size:14px;line-height:1.4;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.read .t{color:#c9c9ce;font-weight:500}
+.tm{color:var(--dim);font-size:13px;white-space:nowrap;padding-top:2px}
+.act{display:flex;gap:8px;margin-top:10px}
+.btn{min-height:40px;padding:0 16px;border-radius:20px;border:0;background:var(--bg3);color:var(--ink);font:600 14px Inter,"Noto Sans KR",sans-serif;text-decoration:none;display:inline-flex;align-items:center;cursor:pointer}
+.btn.v{background:var(--vio)}
+.empty{color:var(--dim);text-align:center;padding:56px 24px;font-size:15px}
+.big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 20px 6px}
+.big div{background:var(--bg2);border-radius:16px;padding:12px 14px}
+.big span{display:block;color:var(--sub);font-size:12px}
+.big b{font-size:24px;font-weight:700}
+.rep{padding:4px 20px 8px}
+.rep ul{margin:6px 0 0;padding-left:18px;color:#d6d6da}.rep li{margin:4px 0;font-size:15px}
+.dd{font-weight:700;color:var(--blue)}
+/* bottom bar */
+.dock{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));display:flex;justify-content:center;gap:10px;z-index:20;pointer-events:none}
+.tabs{pointer-events:auto;display:flex;gap:4px;background:rgba(28,28,31,.92);backdrop-filter:blur(14px);border:1px solid #2b2b2f;border-radius:34px;padding:6px}
+.tab{position:relative;width:62px;height:52px;border:0;border-radius:26px;background:none;color:#cfcfd4;display:grid;place-items:center;cursor:pointer}
+.tab[aria-selected=true]{background:#2c2c31;color:#fff}
+.tab svg.i{width:23px;height:23px}
+.badge{position:absolute;top:7px;right:12px;min-width:16px;height:16px;border-radius:8px;background:var(--blue);color:#05101e;font:700 10px/16px Inter,sans-serif;padding:0 4px;display:none}
+.badge.on{display:block}
+.srch{pointer-events:auto;width:64px;height:64px;border-radius:50%;border:1px solid #2b2b2f;background:rgba(28,28,31,.92);backdrop-filter:blur(14px);color:#fff;display:grid;place-items:center;cursor:pointer}
+.tab:focus-visible,.srch:focus-visible,.row:focus-visible,.ib:focus-visible,.btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.qbox{padding:0 20px 8px;display:none}.qbox.on{display:block}
+.qbox input{width:100%;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--bg2);color:var(--ink);padding:0 16px;font:16px Inter,"Noto Sans KR",sans-serif}
+/* detail sheet */
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:40;overflow-y:auto;transform:translateY(100%);transition:transform .28s ease;padding:calc(10px + env(safe-area-inset-top)) 0 calc(40px + env(safe-area-inset-bottom))}
+.sheet.on{transform:none}
+.sh{max-width:560px;margin:0 auto}
+.sh .top{display:flex;align-items:center;gap:8px;padding:6px 12px}
+.sh h2{font-size:22px;line-height:1.3;margin:6px 20px 10px;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 20px 8px}
+.chip{font-size:13px;padding:5px 10px;border-radius:14px;background:var(--bg3);color:#d4d4d8;white-space:nowrap}
+.box{margin:12px 20px;background:var(--bg2);border-radius:18px;padding:16px}
+.box h3{margin:0 0 8px;font-size:13px;color:var(--sub);font-weight:600}
+.body{white-space:pre-wrap;font-size:15px;line-height:1.65;color:#e4e4e7;overflow-wrap:anywhere}
+.pg{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#93c5fd;background:rgba(59,130,246,.14);border-radius:8px;padding:2px 7px;margin-right:6px;vertical-align:1px}
+.strip{display:flex;gap:10px;overflow-x:auto;padding:2px 0 12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.strip button{flex:0 0 108px;aspect-ratio:909/1287;border:0;padding:0;border-radius:8px;overflow:hidden;background:linear-gradient(100deg,#27272a 30%,#3f3f46 50%,#27272a 70%) 0 0/300% 100%;animation:sk 1.2s linear infinite;scroll-snap-align:start;position:relative;cursor:pointer}
+.strip img{display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s}
+.strip img.ok{opacity:1}
+.strip em{position:absolute;right:5px;bottom:5px;font:600 11px Inter,sans-serif;font-style:normal;color:#fff;background:rgba(0,0,0,.6);border-radius:6px;padding:1px 5px}
+@keyframes sk{to{background-position:-300% 0}}
+.viewer{position:fixed;inset:0;z-index:60;background:#000;overflow-y:auto;display:none;padding:calc(56px + env(safe-area-inset-top)) 0 40px}
+.viewer.on{display:block}
+.viewer img{display:block;width:100%;max-width:820px;margin:0 auto 10px;aspect-ratio:909/1287;background:#fff}
+.vbar{position:fixed;top:0;left:0;right:0;z-index:61;height:calc(52px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 12px 0;display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.85);backdrop-filter:blur(8px)}
+.vn{color:#a1a1aa;font-size:13px;padding-right:4px}
+dl{margin:0;display:grid;grid-template-columns:5em minmax(0,1fr);gap:8px 12px;font-size:14px}
+dt{color:var(--sub)}dd{margin:0;color:#e4e4e7;overflow-wrap:anywhere}
+.hero{padding:6px 20px 18px;display:flex;align-items:baseline;gap:10px}
+.hero b{font-size:56px;line-height:1;font-weight:700;letter-spacing:-1px}
+.hero span{color:var(--sub);font-size:15px}
+.tcard{margin:0 16px 12px;background:var(--bg2);border:1px solid var(--line);border-radius:22px;padding:18px}
+.tcard h3{margin:0;font-size:18px;line-height:1.35}
+.tcard p{margin:6px 0 0;color:var(--sub);font-size:15px}
+.tcard .act{margin-top:14px}.tcard .btn{min-height:46px;padding:0 20px}
+.allclear{margin:8px 16px;border-radius:22px;background:linear-gradient(160deg,#1b2b22,#121214);padding:36px 20px;text-align:center;color:#cfe9d9}
+.allclear b{display:block;font-size:20px;color:#fff;margin-bottom:4px}
+.donebox{margin:18px 20px 0;color:var(--sub)}
+.donebox summary{cursor:pointer;font-size:14px;padding:8px 0;list-style:none}
+.donebox summary::-webkit-details-marker{display:none}
+.dn{padding:8px 0;border-top:1px solid var(--line);font-size:14px;text-decoration:line-through;color:var(--dim)}
+.seg{display:flex;gap:6px;padding:0 20px 10px;overflow-x:auto}
+.seg button{flex:none;height:34px;padding:0 14px;border-radius:17px;border:0;background:var(--bg3);color:#cfcfd4;font:500 13px Inter,"Noto Sans KR",sans-serif;cursor:pointer}
+.seg button[aria-pressed=true]{background:#f4f4f5;color:#0a0a0b}
+.won{margin:10px 16px;border-radius:20px;padding:16px;background:linear-gradient(150deg,#3a3013,#17140b);border:1px solid #4d3f17}
+.won small{color:var(--gold);font-weight:600}.won b{display:block;margin-top:4px}
+.tl{position:relative;margin:14px 20px 0;padding-left:22px}
+.tl:before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.ti{position:relative;padding:0 0 18px;cursor:pointer}
+.ti:before{content:"";position:absolute;left:-21px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--blue)}
+.ti.soon:before{background:var(--blue)}
+.ti .d{font-size:13px;color:var(--blue);font-weight:700}
+.ti .n{font-size:15px;font-weight:600;margin-top:2px}
+.ti .a{font-size:13px;color:var(--sub)}
+.chart{display:flex;align-items:flex-end;gap:8px;height:150px;margin:4px 20px 6px;padding:14px;background:var(--bg2);border-radius:20px}
+.chart div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.chart i{display:block;width:100%;max-width:26px;border-radius:7px;background:#3a3a7a;min-height:3px}
+.chart div.on i{background:var(--vio)}
+.chart span{font-size:11px;color:var(--sub)}.chart em{font-style:normal;font-size:12px;color:#e4e4e7}
+.day{margin:16px 20px 0}
+.day h3{margin:0 0 6px;font-size:20px}
+.day .cnt{display:flex;gap:6px;margin-bottom:6px}
+.day ul{margin:0;padding-left:18px;color:#d6d6da}.day li{margin:4px 0;font-size:15px}
+@media(prefers-reduced-motion:reduce){.sheet{transition:none}}
+.login{position:fixed;inset:0;z-index:80;background:var(--bg);display:none;flex-direction:column;justify-content:center;padding:32px 28px calc(32px + env(safe-area-inset-bottom))}
+.login.on{display:flex}
+.login h2{font-size:28px;margin:0 0 8px}.login p{color:var(--sub);font-size:15px;line-height:1.6;margin:0 0 20px}
+.login input{height:52px;border-radius:14px;border:1px solid var(--line);background:var(--bg2);color:var(--ink);padding:0 16px;font:16px Inter,"Noto Sans KR",sans-serif;margin-bottom:12px}
+.login .btn{height:52px;font-size:16px}
+.login .msg{margin-top:14px;font-size:14px;color:#93c5fd;min-height:20px}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1 id="ttl">할 일</h1>
+    <div class="pill" id="hpill"><button class="ib" id="bSearch" aria-label="검색"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button><button class="ib" id="bTop" aria-label="맨 위로"><svg class="i" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button></div>
+  </header>
+  <div class="sync" id="sync">불러오는 중…</div>
+  <div class="qbox" id="qbox"><input type="search" id="q" placeholder="공모전·주최·내용 검색" aria-label="검색"></div>
+
+  <section class="view on" id="v-todo">
+    <div class="hero"><b id="todoN">0</b><span id="todoS">직접 하셔야 하는 일</span></div>
+    <div id="todos"></div>
+    <details class="donebox" id="doneBox"><summary id="doneSum"></summary><div id="dones"></div></details>
+  </section>
+  <section class="view" id="v-log">
+    <div class="seg" id="seg" role="group" aria-label="상태"></div>
+    <div id="list"></div>
+  </section>
+  <section class="view" id="v-wait">
+    <div class="big" id="stats"></div>
+    <div id="won"></div>
+    <div class="tl" id="tl"></div>
+  </section>
+  <section class="view" id="v-rep">
+    <div class="chart" id="chart" aria-label="최근 7일 제출 수"></div>
+    <div id="reports"></div>
+  </section>
+</div>
+
+<div class="dock">
+  <nav class="tabs" role="tablist" aria-label="화면">
+    <button class="tab" role="tab" data-v="todo" aria-selected="true" aria-label="할 일"><svg class="i" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><span class="badge" id="badge"></span></button>
+    <button class="tab" role="tab" data-v="log" aria-selected="false" aria-label="제출함"><svg class="i" viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1 3h6l1-3h5"/></svg></button>
+    <button class="tab" role="tab" data-v="wait" aria-selected="false" aria-label="결과"><svg class="i" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M10 17h4"/></svg></button>
+    <button class="tab" role="tab" data-v="rep" aria-selected="false" aria-label="리포트"><svg class="i" viewBox="0 0 24 24"><path d="M5 20V10M10 20V4M15 20v-7M20 20v-4"/></svg></button>
+  </nav>
+  <button class="srch" id="dSearch" aria-label="검색"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>
+</div>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="dT"><div class="sh">
+  <div class="top"><button class="ib" id="back" aria-label="닫기"><svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button></div>
+  <h2 id="dT"></h2><div class="chips" id="dC"></div><div id="dB"></div>
+</div></div>
+
+<div class="login" id="login" role="dialog" aria-labelledby="lgT"><h2 id="lgT">공모전 보고</h2><p>본인 이메일로 로그인 링크를 보내드립니다. 메일의 링크를 이 휴대폰에서 누르면 바로 열립니다.</p><input type="email" id="lgE" placeholder="이메일 주소" autocomplete="email" inputmode="email"><button class="btn v" id="lgB">로그인 링크 받기</button><div class="msg" id="lgM" role="status"></div></div>
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="제출물 원본"><div class="vbar"><button class="ib" id="vClose" aria-label="닫기"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button><span class="vn" id="vN"></span></div><div id="vImgs"></div></div>
+<script>
+{
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const safeUrl=u=>typeof u==="string"&&u.startsWith("https://")?u:"";
+const safePath=p=>typeof p==="string"&&/^sub\/[\w.\-]+\.(jpg|png)$/.test(p)?p:"";
+const $=id=>document.getElementById(id);
+const pagesOf=e=>(Array.isArray(e.pages)?e.pages:[]).map(safePath).filter(Boolean);
+const thumbKey=p=>p.replace(/^sub\//,"thumb/");const urls={};const thumb=p=>urls[thumbKey(p)]||"";const full=p=>urls[p]||"";
+const warmed=new Set();
+async function sign(keys){keys=keys.filter(k=>!urls[k]);if(!keys.length||!db)return;
+  const {data}=await db.storage.from("contest").createSignedUrls(keys,6*3600);
+  for(const x of data||[])if(x.signedUrl&&x.path)urls[x.path]=x.signedUrl}
+function warm(e,all){for(const p of pagesOf(e).slice(0,all?99:3)){const t=thumb(p);if(t&&!warmed.has(t)){warmed.add(t);const i=new Image();i.decoding="async";i.src=t}}}
+const TT={todo:"할 일",log:"제출함",wait:"결과",rep:"리포트"};
+const ST={"제출완료":["var(--ok)","✓"],"직접 제출 필요":["var(--warn)","!"],"수상":["var(--gold)","★"],"미선정":["var(--dim)","–"]};
+const HUES=[212,262,330,18,160,190,42,290];
+const today=new Date();today.setHours(0,0,0,0);
+const TODAY=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+let entries=[],todos=[],reports=[],db=null,timer=null,view="todo",seg="전체",curPages=[];
+
+const hue=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return HUES[h%HUES.length]};
+const md=d=>String(d||"").slice(5).replace("-","/");
+function annDate(s){s=String(s||"");let m;
+  if(m=s.match(/(20\d\d)-(\d\d)-(\d\d)/))return new Date(+m[1],+m[2]-1,+m[3]);
+  if(m=s.match(/(?:(20\d\d)\D{0,3})?(\d{1,2})\/(\d{1,2})/))return new Date(m[1]?+m[1]:2026,+m[2]-1,+m[3]);
+  if(m=s.match(/(?:(20\d\d)년\s*)?(\d{1,2})월\s*(초|중|말)?/))return new Date(m[1]?+m[1]:2026,+m[2]-1,{초:5,중:15,말:28}[m[3]]||15);
+  return null}
+const dday=d=>{const n=Math.round((d-today)/864e5);return n===0?"오늘":n>0?"D-"+n:"D+"+(-n)};
+
+function av(e){const [c,g]=ST[e.status]||ST["미선정"];const ch=String(e.host||e.name||"?").replace(/[()㈜\s]/g,"").charAt(0);
+  return `<div class="av" style="background:hsl(${hue(e.host||e.name)} 45% 38%)">${esc(ch)}<i style="background:${c}">${g}</i></div>`}
+function row(e,sub,tm){const isNew=e.date===TODAY;
+  return `<button class="row${isNew?"":" read"}" data-e="${esc(e.id)}">${av(e)}<div><div class="t">${isNew?'<span class="dot"></span>':""}<span>${esc(e.name)}</span></div><div class="s">${pagesOf(e).length?`<span class="pg">제출물 ${pagesOf(e).length}쪽</span>`:""}${esc(sub)}</div></div><div class="tm">${esc(tm)}</div></button>`}
+const sorted=a=>[...a].sort((x,y)=>String(y.date).localeCompare(String(x.date))||(y.row||0)-(x.row||0));
+
+function renderTodo(){
+  const open=todos.filter(t=>t.status!=="done"),done=todos.filter(t=>t.status==="done");
+  $("badge").textContent=open.length;$("badge").classList.toggle("on",open.length>0);
+  $("todoN").textContent=open.length;$("todoS").textContent=open.length?"건, 직접 하셔야 하는 일":"건, 지금은 없습니다";
+  $("todos").innerHTML=open.length?open.map(t=>{const u=safeUrl(t.link);return `<div class="tcard"><h3>${esc(t.title)}</h3><p>${esc(t.why)}</p>${t.deadline?`<div class="chips" style="padding:10px 0 0"><span class="chip">마감 ${esc(md(t.deadline))}</span></div>`:""}<div class="act">${u?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">열기</a>`:""}<button class="btn v" data-done="${esc(t.id)}">완료했어요</button></div></div>`}).join(""):'<div class="allclear"><b>모두 처리됐습니다</b>로그인·본인인증이 필요한 일이 생기면 여기로 올라옵니다</div>';
+  $("doneBox").style.display=done.length?"":"none";
+  $("doneSum").textContent=`완료한 일 ${done.length}건`;
+  $("dones").innerHTML=done.map(t=>`<div class="dn">${esc(t.title)}</div>`).join("");
+}
+const SEGS=["전체","제출완료","직접 제출 필요","수상","미선정"];
+function renderLog(){
+  $("seg").innerHTML=SEGS.map(x=>`<button data-seg="${esc(x)}" aria-pressed="${x===seg}">${esc(x==="직접 제출 필요"?"직접 제출":x)}</button>`).join("");
+  const q=$("q").value.trim().toLowerCase();
+  const rows=sorted(entries).filter(e=>(seg==="전체"||e.status===seg)&&(!q||[e.name,e.host,e.content,e.body].join(" ").toLowerCase().includes(q)));
+  $("list").innerHTML=rows.map(e=>row(e,e.content||e.desc||"",md(e.date))).join("")||'<div class="empty">해당하는 기록이 없습니다</div>';
+}
+function renderWait(){
+  const c={};for(const e of entries)c[e.status]=(c[e.status]||0)+1;
+  const w=entries.filter(e=>e.status==="제출완료").map(e=>({e,d:annDate(e.announce)})).filter(x=>x.d&&x.d>=today).sort((a,b)=>a.d-b.d);
+  $("stats").innerHTML=[["발표 대기",w.length],["수상",c["수상"]||0],["미선정",c["미선정"]||0]].map(([l,n])=>`<div><span>${l}</span><b>${n}</b></div>`).join("");
+  $("won").innerHTML=entries.filter(e=>e.status==="수상").map(e=>`<div class="won" data-e="${esc(e.id)}"><small>수상</small><b>${esc(e.name)}</b></div>`).join("");
+  $("tl").innerHTML=w.map(({e,d})=>{const n=Math.round((d-today)/864e5);return `<div class="ti${n<=7?" soon":""}" data-e="${esc(e.id)}"><div class="d">${dday(d)} · ${d.getMonth()+1}/${d.getDate()}</div><div class="n">${esc(e.name)}</div><div class="a">발표 ${esc(e.announce)}</div></div>`}).join("")||'<div class="empty">발표 일정이 잡힌 건이 없습니다</div>';
+}
+const WD="일월화수목금토";
+function renderReps(){
+  const days=[];for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);days.push(d)}
+  const key=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  const cnt=days.map(d=>entries.filter(e=>e.date===key(d)).length),mx=Math.max(1,...cnt);
+  $("chart").innerHTML=days.map((d,i)=>`<div class="${i===6?"on":""}"><em>${cnt[i]}</em><i style="height:${Math.round(cnt[i]/mx*90)}%"></i><span>${d.getMonth()+1}/${d.getDate()}</span></div>`).join("");
+  const rs=[...reports].sort((a,b)=>String(b.date+b.time).localeCompare(String(a.date+a.time)));
+  $("reports").innerHTML=rs.map(r=>{const d=annDate(r.date);const n=entries.filter(e=>e.date===r.date).length;return `<div class="day"><h3>${d?`${d.getMonth()+1}월 ${d.getDate()}일 ${WD[d.getDay()]}`:esc(r.date)}</h3><div class="cnt"><span class="chip">제출 ${n}건</span>${r.time?`<span class="chip">${esc(r.time)} 보고</span>`:""}</div>${r.title?`<b>${esc(r.title)}</b>`:""}<ul>${(r.lines||[]).map(l=>`<li>${esc(l)}</li>`).join("")}</ul></div>`}).join("")||'<div class="empty">아직 리포트가 없습니다</div>';
+}
+function renderAll(){renderTodo();renderLog();renderWait();renderReps()}
+
+async function openEntry(id){
+  const e=entries.find(x=>x.id===id);if(!e)return;
+  await sign(pagesOf(e).map(thumbKey));
+  $("dT").textContent=e.name;
+  $("dC").innerHTML=[e.status,e.date&&"제출 "+md(e.date),e.deadline&&"마감 "+md(e.deadline),e.announce&&"발표 "+e.announce].filter(Boolean).map(x=>`<span class="chip">${esc(x)}</span>`).join("");
+  const pages=pagesOf(e);curPages=pages;
+  const u=safeUrl(e.link);
+  if(pages.length)$("dC").insertAdjacentHTML("afterbegin",`<span class="chip" style="background:rgba(59,130,246,.18);color:#93c5fd">제출물 ${pages.length}쪽</span>`);
+  $("dB").innerHTML=
+    `<div class="box"><h3>우리가 낸 내용${pages.length?` · 제출물 ${pages.length}쪽 (눌러서 크게)`:""}</h3>${pages.length?`<div class="strip">${pages.map((p,k)=>`<button data-pg="${k}" aria-label="${k+1}쪽 크게 보기"><img src="${esc(thumb(p))}" alt="" decoding="async" fetchpriority="${k<3?"high":"auto"}"><em>${k+1}</em></button>`).join("")}</div>`:""}<div class="body">${esc(e.body||e.content||"-")}</div></div>`+
+    `<div class="box"><h3>공모 정보</h3><dl>${[["내용",e.desc],["시상",e.prize],["주최",e.host],["제출",e.method]].filter(x=>x[1]).map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>${u?`<div class="act"><a class="btn" href="${esc(u)}" target="_blank" rel="noopener">공고 열기</a></div>`:""}</div>`;
+  $("sheet").classList.add("on");$("sheet").scrollTop=0;
+}
+function show(v){if(!TT[v])v="todo";view=v;
+  document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.v===v)));
+  $("ttl").textContent=TT[v];$("hpill").style.visibility=v==="log"?"visible":"hidden";
+  if(v!=="log")$("qbox").classList.remove("on");window.scrollTo(0,0)}
+function openSearch(){location.hash="log";$("qbox").classList.add("on");setTimeout(()=>$("q").focus(),50)}
+
+async function openViewer(k){
+  await sign(curPages);
+  $("vImgs").innerHTML=curPages.map((p,i)=>`<img src="${esc(full(p))}" alt="${i+1}쪽" decoding="async" loading="${Math.abs(i-k)<2?"eager":"lazy"}" id="vp${i}">`).join("");
+  $("vN").textContent=`${curPages.length}쪽`;$("viewer").classList.add("on");
+  requestAnimationFrame(()=>{const t=$("vp"+k);if(t)$("viewer").scrollTop=t.offsetTop-56})}
+$("vClose").onclick=()=>$("viewer").classList.remove("on");
+document.addEventListener("load",ev=>{const t=ev.target;if(t.tagName==="IMG"&&t.closest(".strip")){t.classList.add("ok");t.parentNode.style.animation="none"}},true);
+document.addEventListener("pointerdown",ev=>{const r=ev.target.closest("[data-e]");if(r){const e=entries.find(x=>x.id===r.dataset.e);if(e)warm(e,true)}},{passive:true});
+document.querySelector(".tabs").addEventListener("click",ev=>{const t=ev.target.closest(".tab");if(t)location.hash=t.dataset.v});
+window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
+show(location.hash.slice(1));
+$("dSearch").onclick=openSearch;$("bSearch").onclick=openSearch;
+$("bTop").onclick=()=>window.scrollTo({top:0,behavior:"smooth"});
+$("q").addEventListener("input",renderLog);
+$("back").onclick=()=>$("sheet").classList.remove("on");
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape"){if($("viewer").classList.contains("on"))$("viewer").classList.remove("on");else $("sheet").classList.remove("on")}});
+document.body.addEventListener("click",async ev=>{
+  const sg=ev.target.closest("[data-seg]");if(sg){seg=sg.dataset.seg;renderLog();return}
+  const pg=ev.target.closest("[data-pg]");if(pg){openViewer(+pg.dataset.pg);return}
+  const r=ev.target.closest("[data-e]");if(r){openEntry(r.dataset.e);return}
+  const b=ev.target.closest("[data-done]");if(!b||!db)return;
+  b.disabled=true;b.textContent="처리 중…";
+  try{const {error}=await db.from("contest_todos").update({status:"done",done_at:new Date().toISOString()}).eq("id",b.dataset.done);if(error)throw error;await load()}
+  catch(e){b.disabled=false;b.textContent="완료";$("sync").textContent="완료 처리 실패, 다시 눌러 주세요"}
+});
+
+const SB_URL="https://hulzkkirabsifarlxztl.supabase.co",SB_KEY="sb_publishable_mjxBtCRFCrGAiIOcdr6Lng_ERNLjOz_";
+db=window.supabase.createClient(SB_URL,SB_KEY,{auth:{flowType:"implicit",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+async function load(){
+  const [e,t,r,m]=await Promise.all([db.from("contest_entries").select("*"),db.from("contest_todos").select("*"),db.from("contest_reports").select("*"),db.from("contest_meta").select("*").eq("key","sync")]);
+  if(e.error){$("sync").textContent="불러오기 실패";return}
+  entries=e.data;todos=t.data||[];reports=r.data||[];
+  const mm=(m.data||[])[0];$("sync").textContent=mm?`동기화 ${mm.at||""} · ${entries.length}건`:`${entries.length}건`;
+  renderAll();
+  const keys=[...new Set(sorted(entries).flatMap(x=>pagesOf(x).map(thumbKey)))];
+  sign(keys).then(()=>{const idle=window.requestIdleCallback||(f=>setTimeout(f,500));idle(()=>sorted(entries).slice(0,12).forEach(x=>warm(x,false)))});
+}
+function needLogin(on){$("login").classList.toggle("on",on)}
+$("lgB").onclick=async()=>{const em=$("lgE").value.trim();if(!em){$("lgM").textContent="이메일을 입력해 주세요";return}
+  $("lgB").disabled=true;$("lgM").textContent="보내는 중…";
+  const {error}=await db.auth.signInWithOtp({email:em,options:{emailRedirectTo:location.origin+location.pathname}});
+  $("lgB").disabled=false;$("lgM").textContent=error?("보내지 못했습니다: "+error.message):"메일을 보냈습니다. 받은편지함의 링크를 눌러 주세요."};
+db.auth.onAuthStateChange((ev,session)=>{needLogin(!session);if(session&&(ev==="SIGNED_IN"||ev==="INITIAL_SESSION"))load()});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")db.auth.getSession().then(({data})=>{if(data.session)load()})});
+setInterval(()=>{if(document.visibilityState==="visible")db.auth.getSession().then(({data})=>{if(data.session)load()})},60000);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");
+}
+</script>
+</body>
+</html>
