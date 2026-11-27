@@ -109,6 +109,10 @@ dt{color:var(--sub)}dd{margin:0;color:#e4e4e7;overflow-wrap:anywhere}
 .tl{position:relative;margin:14px 20px 0;padding-left:22px}
 .tl:before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:var(--line)}
 .ti{position:relative;padding:0 0 18px;cursor:pointer}
+.sec{margin:18px 20px 6px;font-size:13px;color:var(--sub);font-weight:600}
+.due{margin:0 16px 8px;border:1px solid #5b4a1d;background:#1b170c;border-radius:18px;overflow:hidden}
+.res{display:flex;gap:8px}.res .btn{flex:1}
+.res .btn.on{background:#f4f4f5;color:#0a0a0b}
 .ti:before{content:"";position:absolute;left:-21px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--blue)}
 .ti.soon:before{background:var(--blue)}
 .ti .d{font-size:13px;color:var(--blue);font-weight:700}
@@ -152,7 +156,9 @@ dt{color:var(--sub)}dd{margin:0;color:#e4e4e7;overflow-wrap:anywhere}
   </section>
   <section class="view" id="v-wait">
     <div class="big" id="stats"></div>
+    <div id="dueBox"><div class="sec">결과 확인 필요 · 발표일이 지났습니다</div><div class="due" id="due"></div></div>
     <div id="won"></div>
+    <div class="sec" id="tlH">발표 예정</div>
     <div class="tl" id="tl"></div>
   </section>
   <section class="view" id="v-rep">
@@ -189,7 +195,8 @@ const thumbKey=p=>p.replace(/^sub\//,"thumb/");const urls={};const thumb=p=>urls
 const warmed=new Set();
 async function sign(keys){keys=keys.filter(k=>!urls[k]);if(!keys.length||!db)return;
   const {data}=await db.storage.from("contest").createSignedUrls(keys,6*3600);
-  for(const x of data||[])if(x.signedUrl&&x.path)urls[x.path]=x.signedUrl}
+  for(const x of data||[])if(x.signedUrl&&x.path)urls[x.path]=x.signedUrl;
+  try{const u=JSON.parse(localStorage.getItem(UK)||"null");const t=u&&Date.now()-u.t<3600e3?u.t:Date.now();localStorage.setItem(UK,JSON.stringify({t,urls:t===(u&&u.t)?Object.assign(u.urls,urls):urls}))}catch(e){}}
 function warm(e,all){for(const p of pagesOf(e).slice(0,all?99:3)){const t=thumb(p);if(t&&!warmed.has(t)){warmed.add(t);const i=new Image();i.decoding="async";i.src=t}}}
 const TT={todo:"할 일",log:"제출함",wait:"결과",rep:"리포트"};
 const ST={"제출완료":["var(--ok)","✓"],"직접 제출 필요":["var(--warn)","!"],"수상":["var(--gold)","★"],"미선정":["var(--dim)","–"]};
@@ -233,6 +240,9 @@ function renderWait(){
   const c={};for(const e of entries)c[e.status]=(c[e.status]||0)+1;
   const w=entries.filter(e=>e.status==="제출완료").map(e=>({e,d:annDate(e.announce)})).filter(x=>x.d&&x.d>=today).sort((a,b)=>a.d-b.d);
   $("stats").innerHTML=[["발표 대기",w.length],["수상",c["수상"]||0],["미선정",c["미선정"]||0]].map(([l,n])=>`<div><span>${l}</span><b>${n}</b></div>`).join("");
+  const due=sorted(entries).filter(e=>e.status==="제출완료"&&(d=>d&&d<today)(annDate(e.announce)));
+  $("dueBox").style.display=due.length?"":"none";
+  $("due").innerHTML=due.map(e=>row(e,"발표 "+(e.announce||"")+" · 결과를 눌러 표시해 주세요","")).join("");
   $("won").innerHTML=entries.filter(e=>e.status==="수상").map(e=>`<div class="won" data-e="${esc(e.id)}"><small>수상</small><b>${esc(e.name)}</b></div>`).join("");
   $("tl").innerHTML=w.map(({e,d})=>{const n=Math.round((d-today)/864e5);return `<div class="ti${n<=7?" soon":""}" data-e="${esc(e.id)}"><div class="d">${dday(d)} · ${d.getMonth()+1}/${d.getDate()}</div><div class="n">${esc(e.name)}</div><div class="a">발표 ${esc(e.announce)}</div></div>`}).join("")||'<div class="empty">발표 일정이 잡힌 건이 없습니다</div>';
 }
@@ -257,6 +267,7 @@ async function openEntry(id){
   if(pages.length)$("dC").insertAdjacentHTML("afterbegin",`<span class="chip" style="background:rgba(59,130,246,.18);color:#93c5fd">제출물 ${pages.length}쪽</span>`);
   $("dB").innerHTML=
     `<div class="box"><h3>우리가 낸 내용${pages.length?` · 제출물 ${pages.length}쪽 (눌러서 크게)`:""}</h3>${pages.length?`<div class="strip">${pages.map((p,k)=>`<button data-pg="${k}" aria-label="${k+1}쪽 크게 보기"><img src="${esc(thumb(p))}" alt="" decoding="async" fetchpriority="${k<3?"high":"auto"}"><em>${k+1}</em></button>`).join("")}</div>`:""}<div class="body">${esc(e.body||e.content||"-")}</div></div>`+
+    (["제출완료","수상","미선정"].includes(e.status)?`<div class="box"><h3>결과</h3><div class="res">${[["제출완료","발표 전"],["수상","수상"],["미선정","미선정"]].map(([v,l])=>`<button class="btn${e.status===v?" on":""}" data-res="${v}" data-id="${esc(e.id)}" aria-pressed="${e.status===v}">${l}</button>`).join("")}</div></div>`:"")+
     `<div class="box"><h3>공모 정보</h3><dl>${[["내용",e.desc],["시상",e.prize],["주최",e.host],["제출",e.method]].filter(x=>x[1]).map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>${u?`<div class="act"><a class="btn" href="${esc(u)}" target="_blank" rel="noopener">공고 열기</a></div>`:""}</div>`;
   if(!isOn("sheet"))pushOverlay("sheet");
   $("sheet").classList.add("on");$("sheet").scrollTop=0;
@@ -295,6 +306,7 @@ document.addEventListener("keydown",ev=>{if(ev.key==="Escape"){if(isOn("viewer")
 document.body.addEventListener("click",async ev=>{
   const sg=ev.target.closest("[data-seg]");if(sg){seg=sg.dataset.seg;renderLog();return}
   const pg=ev.target.closest("[data-pg]");if(pg){openViewer(+pg.dataset.pg);return}
+  const rs=ev.target.closest("[data-res]");if(rs){setResult(rs.dataset.id,rs.dataset.res);return}
   const r=ev.target.closest("[data-e]");if(r){openEntry(r.dataset.e);return}
   const b=ev.target.closest("[data-done]");if(!b||!db)return;
   b.disabled=true;b.textContent="처리 중…";
@@ -304,12 +316,21 @@ document.body.addEventListener("click",async ev=>{
 
 const SB_URL="https://hulzkkirabsifarlxztl.supabase.co",SB_KEY="sb_publishable_mjxBtCRFCrGAiIOcdr6Lng_ERNLjOz_";
 db=window.supabase.createClient(SB_URL,SB_KEY,{auth:{flowType:"implicit",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+async function setResult(id,st){const e=entries.find(x=>x.id===id);if(!e||e.status===st)return;
+  const prev=e.status,keep=async()=>{const y=$("sheet").scrollTop;await openEntry(id);$("sheet").scrollTop=y};e.status=st;renderAll();keep();
+  const {error}=await db.from("contest_entries").update({status:st,result_at:new Date().toISOString()}).eq("id",id);
+  if(error){e.status=prev;renderAll();keep();$("sync").textContent="결과 저장 실패, 다시 눌러 주세요"}else saveCache()}
+const CK="cr_cache_v1",UK="cr_urls_v1";
+function saveCache(){try{localStorage.setItem(CK,JSON.stringify({entries,todos,reports,sync:$("sync").textContent}))}catch(e){}}
+function restoreCache(){try{const c=JSON.parse(localStorage.getItem(CK)||"null");if(!c)return;entries=c.entries||[];todos=c.todos||[];reports=c.reports||[];
+  const u=JSON.parse(localStorage.getItem(UK)||"null");if(u&&Date.now()-u.t<5*3600e3)Object.assign(urls,u.urls);
+  $("sync").textContent=(c.sync||"")+" · 새로 받는 중…";renderAll()}catch(e){}}
 async function load(){
   const [e,t,r,m]=await Promise.all([db.from("contest_entries").select("*"),db.from("contest_todos").select("*"),db.from("contest_reports").select("*"),db.from("contest_meta").select("*").eq("key","sync")]);
   if(e.error){$("sync").textContent="불러오기 실패";return}
   entries=e.data;todos=t.data||[];reports=r.data||[];
   const mm=(m.data||[])[0];$("sync").textContent=mm?`동기화 ${mm.at||""} · ${entries.length}건`:`${entries.length}건`;
-  renderAll();
+  renderAll();saveCache();
   const keys=[...new Set(sorted(entries).flatMap(x=>pagesOf(x).map(thumbKey)))];
   sign(keys).then(()=>{const idle=window.requestIdleCallback||(f=>setTimeout(f,500));idle(()=>sorted(entries).slice(0,12).forEach(x=>warm(x,false)))});
 }
@@ -318,6 +339,7 @@ $("lgB").onclick=async()=>{const em=$("lgE").value.trim();if(!em){$("lgM").textC
   $("lgB").disabled=true;$("lgM").textContent="보내는 중…";
   const {error}=await db.auth.signInWithOtp({email:em,options:{emailRedirectTo:location.origin+location.pathname}});
   $("lgB").disabled=false;$("lgM").textContent=error?("보내지 못했습니다: "+error.message):"메일을 보냈습니다. 받은편지함의 링크를 눌러 주세요."};
+restoreCache();
 db.auth.onAuthStateChange((ev,session)=>{needLogin(!session);if(session&&(ev==="SIGNED_IN"||ev==="INITIAL_SESSION"))load()});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")db.auth.getSession().then(({data})=>{if(data.session)load()})});
 setInterval(()=>{if(document.visibilityState==="visible")db.auth.getSession().then(({data})=>{if(data.session)load()})},60000);
